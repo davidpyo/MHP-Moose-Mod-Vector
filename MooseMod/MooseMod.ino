@@ -125,7 +125,7 @@ Adafruit_SSD1306 display(PIN_OLED_RESET);
 Bounce btnRev            = Bounce(); 
 Bounce btnTrigger        = Bounce(); 
 Bounce switchSelector    = Bounce();
-Bounce switchButton = Bounce();
+Bounce switchButton      = Bounce();
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -285,191 +285,7 @@ void updateNormalDisplay() {
   display.display();
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: updateV2ModeDisplay
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-void updateV2ModeDisplay() {
-  readVoltage();
-  int numOfCircle = burstLimit;
-  int intCurrentVolt = (int) (currentVoltage * 10);
 
-  if (intCurrentVolt < BATTERY_MIN_3DIGIT) {
-    intCurrentVolt = BATTERY_MIN_3DIGIT;
-  } else if (intCurrentVolt > BATTERY_MAX_3DIGIT) {
-    intCurrentVolt = BATTERY_MAX_3DIGIT;
-  }
-  
-  int batt = map(intCurrentVolt, BATTERY_MIN_3DIGIT, BATTERY_MAX_3DIGIT, 0, 16);
-
-  display.clearDisplay();
-  
-  display.fillRect(0, 0, (8*batt), 4, WHITE);
-  for (int i=1; i<=batt; i++) {
-    display.drawLine(i*8, 0, i*8, 4, BLACK);
-  }
-  
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-
-  display.setCursor(0,8);
-  display.print(">> ");
-  display.print(currentVoltage);
-  display.println(" volts");  
-      
-  display.setCursor(0,57);
-  display.println(rofLimitStrArr[modeROFSelected]);  
-
-  display.setTextSize(2);
-  display.setCursor(0,23);
-  display.print(speedSelStr);
-  display.println("~V6II~");   
-
-  display.setCursor(90,18);
-  display.setTextSize(3);
-  display.println(dartLeft);  
-
-  for(int i=0; i<numOfCircle; i++) {
-    display.fillCircle((i * 9) + 3, 48, 3, WHITE);
-  }
-  display.display();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: updateDisplay
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-void updateDisplay() {
-  if (isV2Mode) {
-    updateV2ModeDisplay();
-  } else {
-    updateNormalDisplay();
-  }  
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: updateMagOutDisplay
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-void updateMagOutDisplay() {
-  readVoltage();
-  
-  int intCurrentVolt = (int) (currentVoltage * 10);
-
-  if (intCurrentVolt < BATTERY_MIN_3DIGIT) {
-    intCurrentVolt = BATTERY_MIN_3DIGIT;
-  } else if (intCurrentVolt > BATTERY_MAX_3DIGIT) {
-    intCurrentVolt = BATTERY_MAX_3DIGIT;
-  }
-  
-  int batt = map(intCurrentVolt, BATTERY_MIN_3DIGIT, BATTERY_MAX_3DIGIT, 0, 16);
-
-  display.clearDisplay();
-  
-  display.fillRect(0, 0, (8*batt), 4, WHITE);
-  for (int i=1; i<=batt; i++) {
-    display.drawLine(i*8, 0, i*8, 4, BLACK);
-  }
-  
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-
-  display.setCursor(0,8);
-  display.print(">> ");
-  display.print(currentVoltage);
-  display.println(" volts");  
-  
-  display.setCursor(0,19);
-  display.println("MAG OUT - SET");  
-      
-  display.setCursor(0,57);
-  display.println("<*-*-*-*-*^*-*-*-*-*>");  
-
-  display.setTextSize(2);
-  display.setCursor(0,32);
-  display.println("-AMMO-");  
-  
-  display.setCursor(90,18);
-  display.setTextSize(3);
-  display.println(ammoLimit);  
-
-  display.display();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: updateSafetyDisplay
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-void updateSafetyDisplay() {
-  readVoltage();
-  int numOfCircle = burstLimit;
-  int intCurrentVolt = (int) (currentVoltage * 10);
-
-  if (intCurrentVolt < BATTERY_MIN_3DIGIT) {
-    intCurrentVolt = BATTERY_MIN_3DIGIT;
-  } else if (intCurrentVolt > BATTERY_MAX_3DIGIT) {
-    intCurrentVolt = BATTERY_MAX_3DIGIT;
-  }
-  
-  int batt = map(intCurrentVolt, BATTERY_MIN_3DIGIT, BATTERY_MAX_3DIGIT, 0, 16);
-
-  display.clearDisplay();
-  
-  display.fillRect(0, 0, (8*batt), 4, WHITE);
-  for (int i=1; i<=batt; i++) {
-    display.drawLine(i*8, 0, i*8, 4, BLACK);
-  }
-  
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-
-  display.setCursor(0,8);
-  display.print(">> ");
-  display.print(currentVoltage);
-  display.println(" volts");  
-      
-  display.setCursor(0,57);
-  display.println(rofLimitStrArr[modeROFSelected]);  
-
-  display.setTextSize(2);
-  display.setCursor(0,21);
-  display.println("SAFETY");  
-
-  display.setCursor(90,18);
-  display.setTextSize(3);
-  display.println(dartLeft);  
-
-  for(int i=0; i<numOfCircle; i++) {
-    display.fillCircle((i * 9) + 3, 48, 3, WHITE);
-  }
-  display.display();
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: updateBatteryLowDisplay
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-void updateBatteryLowDisplay() {
-  readVoltage();
-  if (batteryLow) {
-    display.clearDisplay();
-        
-    display.setTextSize(2);
-    display.setCursor(0,14);
-    display.println("+-------+");  
-    display.println("|BattLow|=");  
-    display.println("+-------+");  
-  
-    display.display();
-  } else {
-    if (magOut) {
-      updateMagOutDisplay();
-    } else {
-      updateDisplay();
-    }
-  }
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: shutdown
@@ -513,13 +329,13 @@ void setup() { // initilze
   btnTrigger.attach(PIN_DARTTRIGGER);
   btnTrigger.interval(5);
 
-  pinMode(PIN_SELECTOR_ONE,INPUT_PULLUP);     // PULLUP
-  switchSelectorOne.attach(PIN_SELECTOR_ONE);
-  switchSelectorOne.interval(5);
+  pinMode(PIN_SELECTOR,INPUT_PULLUP);     // PULLUP
+  switchSelector.attach(PIN_SELECTOR);
+  switchSelector.interval(5);
 
-  pinMode(PIN_SELECTOR_TWO,INPUT_PULLUP);     // PULLUP
-  switchSelectorTwo.attach(PIN_SELECTOR_TWO);
-  switchSelectorTwo.interval(5);
+  pinMode(PIN_BUTTON,INPUT_PULLUP);     // PULLUP
+  switchButton.attach(PIN_BUTTON;
+  switchButton.interval(5);
 
   pinMode(PIN_DARTRESET, INPUT_PULLUP);       // PULLUP
   btnDartReset.attach(PIN_DARTRESET);
