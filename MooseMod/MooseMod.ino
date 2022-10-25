@@ -3,9 +3,13 @@
 *
 * Description
 * Program for MHP Moose Mod Vector 
+* Forked from the original, removes safety, dart counter functionality. 
+* 
+*
+*
 *
 * created  13 Jun 2019
-* modified 
+* modified 25 Oct 2022
 * by TungstenEXE, /u/dpairsoft
 * 
 * For non commercial use
@@ -61,11 +65,9 @@
 
 #define PIN_SOLENOID                9    // (Purple) PIN to control solenoid
 
-#define PIN_SELECTOR_ONE            10   // (Grey)   Selector switch one
-#define PIN_SELECTOR_TWO            11   // (Green)  Selector switch two
-#define PIN_DARTRESET               12   // (Brown)  PIN listening to reset counter event 
-  
-#define PIN_SAFETY                  A0   // (Orange) PIN Listening to safety switch
+#define PIN_BUTTON                  10   // (Grey)   Button for changing menus
+#define PIN_SELECTOR                11   // (Green)  Selector switch for Semi/(Burst/Full)
+
 // Note                             A4      (Blue)   are used by the OLED SDA (Blue)
 // Note                             A5      (Yellow) are used by the OLED SCL (Yellow)
 #define PIN_VOLTREAD                A6   // (Yellow) PIN to receive voltage reading from battery 
@@ -73,9 +75,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // End Of PIN Assigment
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define AMMO_UPPER_LIMIT            35   // Maxmimum ammo configurable
-#define AMMO_LOWER_LIMIT            6    // Minimum  ammo configurable
 
 #define BURST_UPPER_LIMIT           4    // Maxmimum burst configurable
 #define BURST_LOWER_LIMIT           2    // Minimum burst configurable
@@ -94,23 +93,15 @@
                                          
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
 
-#define BATTERY_MIN                 9.8  // Minimum voltage of battery for rev to operate
-#define BATTERY_MIN_3DIGIT          98   // Minimum voltage of battery for rev to operate
-#define BATTERY_MAX_3DIGIT          123  // Maximun voltage above 12.3 is consider to be full
+int     modeROFSelected            = MODE_ROF_HIGH;   // track the ROF selected, set default to High
 
-String  rofLimitStrArr []         = {"        <<<>>>", "     <<<<<<>>>>>>", "<<<<<<<<<<<>>>>>>>>>>>"}; 
-int     modeROFSelected           = MODE_ROF_HIGH;   // track the ROF selected, set default to High
+int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
+int     delaySolenoidRetracted [] = {80, 55, 45}; //delay from when solenoid to fully retract to allow another extension
 
-int     delaySolenoidExtended  [] = {80, 75, 60};
-int     delaySolenoidRetracted [] = {80, 55, 45};
-  
-int     ammoLimit                 = 18;          // default set as 18 dart mag
 int     burstLimit;                              // darts per burst
 
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
 int     dartToBeFire              = 0;           // track amount of dart(s) to fire when trigger pulled, 0 by default
-int     dartLeft                  = ammoLimit;   // track amount of dart in mag, same default value as of ammoLimit
-float   currentVoltage            = 99.0;
 
 int     fwLimitArr []             = {75, 100};   // number are in percentage
 int     FW_LOW                    = 0;
@@ -119,14 +110,10 @@ int32_t frequency                 = 10000;       //frequency (in Hz) for PWM con
 int     fwSpeed;
 String  speedSelStr               = "";
 
-boolean batteryLow                = false;       // track battery status
 boolean isRevving                 = false;       // track if blaster firing         
-boolean isFiring                  = false;       // track if blaster firing         
-boolean magOut                    = false;       // track is there a mag 
-boolean safetyOn                  = false;       // track is safetyOn 
+boolean isFiring                  = false;       // track if blaster firing
+boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
 
-boolean isV2Mode                  = false;       // true when V2 mode is selected
-boolean isV2ModeFullAuto          = false;       // true when V2 mode is on and is on full auto firing
 
 unsigned long timerSolenoidDetect = 0;
 boolean       isSolenoidExtended  = false;
@@ -149,37 +136,20 @@ Bounce btnSafety         = Bounce();
 void shotFiringHandle() {
   if (isFiring) {
     if (isSolenoidExtended) {
-      if ((millis() - timerSolenoidDetect) >= delaySolenoidExtended[modeROFSelected]) {
+      if ((millis() - timerSolenoidDetect) >= delaySolenoidExtended) {
         digitalWrite(PIN_SOLENOID, LOW); // Retract Solenoid
-
-        // to refresh the whole display is too time consuming
-        // therefore just overwrite the old dart count by switching to background color
-        // write the current count on the screen, this remove it from the screen
-        display.setTextColor(BLACK);
-        display.setCursor(90,18);
-        display.print(dartLeft);
-  
-        dartLeft--;     // decrease dart count
         dartToBeFire--;
-
-        // switch back to white text and write the new count
-        display.setTextColor(WHITE);
-        display.setCursor(90,18);
-        display.print(dartLeft);
-        display.display();
         
         isSolenoidExtended = false;
         timerSolenoidDetect = millis();        
       }
     } else { // Solenoid had returned to rest position
-      if (dartToBeFire == 0) {
+      if (dartToBeFire == 0) { //done firing
         isFiring = false;
-        if (!isRevving || isV2Mode) { // Rev button not pressed or in V2 mode
+        if (!isRevving) { // Rev button not pressed
           isRevving = false;
-          // digitalWrite(PIN_FLYWHEEL_MOSFET, LOW); // stop flywheels
-          pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+          pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
         }
-        updateDisplay();
       } else if ((millis() - timerSolenoidDetect) >= delaySolenoidRetracted[modeROFSelected]) {
         digitalWrite(PIN_SOLENOID, HIGH); // Extend Solenoid
         isSolenoidExtended = true;
@@ -195,44 +165,36 @@ void shotFiringHandle() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void triggerPressedHandle(int caseModeFire) {  
   //updateSettingDisplay();
-  if (dartLeft > 0) {
-    if (isV2Mode && !isRevving) {
+    if (!isRevving) {
       pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
       delay(REV_UP_DELAY);
       isRevving = true;
     }
-  
-    if (isRevving){
+    
       switch(caseModeFire) {
         case MODE_SINGLE: dartToBeFire++; break;
         case MODE_BURST : dartToBeFire += burstLimit; 
-            if (dartToBeFire > dartLeft) {
-              dartToBeFire = dartLeft;
-            }
           break;
-        case MODE_AUTO  : dartToBeFire = dartLeft;
+        case MODE_AUTO  : dartToBeFire += 1000; //generic max value
       }
 
       // Start Firing    
       if (!isFiring) {
         isFiring = true;
-        display.setTextSize(3);
-  
         digitalWrite(PIN_SOLENOID, HIGH); // extend pusher
         timerSolenoidDetect = millis();
         isSolenoidExtended = true;      
-      }    
-    }
+          
   }
 }
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: triggerReleasedHandle
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void triggerReleasedHandle() {  
-  if ((modeFire == MODE_AUTO || isV2ModeFullAuto) && isFiring) {
-    isV2ModeFullAuto = false;
+  if (((modeFire == MODE_AUTO) || (modeFire == MODE_BURST)) && isFiring) {
     if (dartToBeFire > 1) {      
       dartToBeFire = 1;    // fire off last shot
     }
@@ -617,43 +579,6 @@ void loop() { // Main Loop
     btnTrigger.update();
     switchSelectorOne.update();
     switchSelectorTwo.update();    
-    btnDartReset.update();    
-    btnSafety.update();
-    
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Listen to Mag Out
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    if (btnDartReset.fell()) { // pressed, there is a Mag in the blaster
-      dartLeft = ammoLimit;
-      magOut   = false;      
-      
-      if (safetyOn) {
-        updateSafetyDisplay();
-      } else {
-        updateDisplay();
-      }
-    } else if (btnDartReset.rose()) { // No Mag in the blaster      
-      shutdownSys();
-      magOut = true;
-      updateMagOutDisplay();
-    }
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Listen to Safety
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    if (btnSafety.fell()) {               // Safety on
-      safetyOn = true;
-      shutdownSys(); 
-      
-      if (!magOut) {
-        updateSafetyDisplay();
-      }
-    } else if (btnSafety.rose()) {        // Safety off
-      safetyOn = false;
-      if (!magOut) {
-        updateDisplay();
-      }
-    }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     // Listen to Rev Press/Release
