@@ -124,10 +124,9 @@ Adafruit_SSD1306 display(PIN_OLED_RESET);
 // Declare and Instantiate Bounce objects
 Bounce btnRev            = Bounce(); 
 Bounce btnTrigger        = Bounce(); 
-Bounce switchSelectorOne = Bounce();
-Bounce switchSelectorTwo = Bounce();
-Bounce btnDartReset      = Bounce();
-Bounce btnSafety         = Bounce();
+Bounce switchSelector    = Bounce();
+Bounce switchButton = Bounce();
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: shotFiredHandle
@@ -570,44 +569,24 @@ void setup() { // initilze
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void loop() { // Main Loop  
-  if (!batteryLow) {  
+    
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     // Update all buttons
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     
     btnRev.update();
     btnTrigger.update();
-    switchSelectorOne.update();
-    switchSelectorTwo.update();    
+    switchSelector.update();
+    switchButton.update();    
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     // Listen to Rev Press/Release
     /////////////////////////////////////////////////////////////////////////////////////////////////////
-    if (btnRev.fell()) {                   // press
-      if (magOut) {
-        if (ammoLimit > AMMO_LOWER_LIMIT) {
-          ammoLimit--;      
-          updateMagOutDisplay();
-        }
-      } else if (safetyOn) {
-        if (digitalRead(PIN_DARTTRIGGER) == LOW ) {
-          modeROFSelected = ++modeROFSelected % NUM_OF_MODE_ROF;
-          updateSafetyDisplay();
-        }      
-      } else if (isV2Mode) { 
-        if (digitalRead(PIN_DARTTRIGGER) == HIGH) {
-          triggerPressedHandle(MODE_BURST);
-          isV2ModeFullAuto = false;
-        } else {
-          triggerPressedHandle(MODE_AUTO);
-          isV2ModeFullAuto = true;
-        }      
-      } else {      
+    if (btnRev.fell()) {                   // press    
         isRevving = true;
         // digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH); // start flywheels
         pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
-      }
-    } else if (btnRev.rose() && !isV2Mode) {        // released
+    } else if (btnRev.rose()) {        // released
       isRevving = false;
       if (!isFiring) {        
         // digitalWrite(PIN_FLYWHEEL_MOSFET, LOW); // stop flywheels
@@ -619,29 +598,9 @@ void loop() { // Main Loop
     // Listen to Trigger Pull/Release
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     if (btnTrigger.fell()) {               // pull
-      if (magOut) {
-        if (ammoLimit < AMMO_UPPER_LIMIT) {
-          ammoLimit++;      
-          updateMagOutDisplay();
-        }
-      } else if (safetyOn) {
-        if (digitalRead(PIN_REV) == LOW && !isV2Mode) {
-          burstLimit = (burstLimit == BURST_UPPER_LIMIT) ? BURST_LOWER_LIMIT : burstLimit + 1;
-          updateSafetyDisplay();
-        }
-      } else if (isV2Mode) {
-        if (digitalRead(PIN_REV) == HIGH) {
-          triggerPressedHandle(MODE_SINGLE);
-          isV2ModeFullAuto = false;
-        } else {
-          triggerPressedHandle(MODE_AUTO);
-          isV2ModeFullAuto = true;
-        }    
-      } else {
-        triggerPressedHandle(modeFire);
-      }        
+        triggerPressedHandle(modeFire);        
     } else if (btnTrigger.rose()) {        // released
-      triggerReleasedHandle();
+        triggerReleasedHandle();
     }
   
     /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -653,23 +612,18 @@ void loop() { // Main Loop
     // Listen to Firing Mode change: Single Shot, Burst, Full Auto
     /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (switchSelectorOne.fell() || switchSelectorOne.rose() || switchSelectorTwo.fell() || switchSelectorTwo.rose() ) {  
-      modeFire = 3 - ((digitalRead(PIN_SELECTOR_TWO) * 2) + (digitalRead(PIN_SELECTOR_ONE) * 1)); // 0, 1 or 2    
-      
-      if (isV2Mode) {
-        burstLimit = modeFire + 2;
-      }
-      
-      if (!magOut && !safetyOn) {
-        updateDisplay();
-      }
+    if (switchSelector.changed()) {  
+        if (switchSelector.read()){
+          if(isBurst){
+            modeFire = MODE_BURST;
+          } else {
+            modeFire = MODE_AUTO;
+          }
+        } else {
+           modeFire = MODE_SINGLE;
+        }
     }    
-  } else {
-    // Battery is Low
-    // Stop all Motors just in case.
-    shutdownSys();    
-    updateBatteryLowDisplay();
-  }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
