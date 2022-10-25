@@ -5,9 +5,6 @@
 * Program for MHP Moose Mod Vector 
 * Forked from the original, removes safety, dart counter functionality. 
 * 
-*
-*
-*
 * created  13 Jun 2019
 * modified 25 Oct 2022
 * by TungstenEXE, /u/dpairsoft
@@ -59,7 +56,7 @@
 // The colors for for my wiring reference only, you can use your own color
 
 #define PIN_FLYWHEEL_MOSFET         3    // (Orange) PIN to control DC Flywheel MOSFET 
-#define PIN_OLED_RESET              4    //          for OLED
+#define PIN_OLED_RESET              -1    //          for OLED
 #define PIN_REV                     5    // (White)  PIN listening to change in the Nerf Rev Button 
 #define PIN_DARTTRIGGER             6    // (Purple) PIN listening to trigger pull event
 
@@ -76,29 +73,34 @@
 // End Of PIN Assigment
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define BURST_UPPER_LIMIT           4    // Maxmimum burst configurable
-#define BURST_LOWER_LIMIT           2    // Minimum burst configurable
+//#define BURST_UPPER_LIMIT           4    // Maxmimum burst configurable
+//#define BURST_LOWER_LIMIT           2    // Minimum burst configurable
 
 #define MODE_SINGLE                 0    // Integer constant to indicate firing single shot
 #define MODE_BURST                  1    // Integer constant to indicate firing burst
 #define MODE_AUTO                   2    // Integer constant to indicate firing full auto
-#define NUM_OF_MODE                 3    // Number of mode available
+//#define NUM_OF_MODE                 3    // Number of mode available
 
-#define DEFAULT_BURSTLIMIT          3    // Default number of burst fire darts
+//#define DEFAULT_BURSTLIMIT          3    // Default number of burst fire darts
 
-#define MODE_ROF_LOW                0    // Integer constant to indicate low rate of fire 
-#define MODE_ROF_STANDARD           1    // Integer constant to indicate standard rate of fire 
-#define MODE_ROF_HIGH               2    // Integer constant to indicate highest rate of fire 
-#define NUM_OF_MODE_ROF             3    // Number of ROF available
+//#define MODE_ROF_LOW                0    // Integer constant to indicate low rate of fire 
+//#define MODE_ROF_STANDARD           1    // Integer constant to indicate standard rate of fire 
+//#define MODE_ROF_HIGH               2    // Integer constant to indicate highest rate of fire 
+//#define NUM_OF_MODE_ROF             3    // Number of ROF available
+#define MAIN_MENU                   0    //main menu
+#define ROF                         1    //ROF menu
+#define AUTO_BURST                  2    //Selection of either burst/auto
+#define BURST_LIMIT                 3    //selection of how many darts per burst
+#define OP_SCREEN                   4    //operating screen after setup
                                          
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
 
-int     modeROFSelected            = MODE_ROF_HIGH;   // track the ROF selected, set default to High
+//int     modeROFSelected            = MODE_ROF_HIGH;   // track the ROF selected, set default to High
 
 int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
-int     delaySolenoidRetracted [] = {80, 55, 45}; //delay from when solenoid to fully retract to allow another extension
+int     delaySolenoidRetracted     = 45; //delay from when solenoid to fully retract to allow another extension
 
-int     burstLimit;                              // darts per burst
+int     burstLimit                 = 3;     // darts per burst
 
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
 int     dartToBeFire              = 0;           // track amount of dart(s) to fire when trigger pulled, 0 by default
@@ -107,17 +109,17 @@ int     fwLimitArr []             = {75, 100};   // number are in percentage
 int     FW_LOW                    = 0;
 int     FW_HIGH                   = 1;
 int32_t frequency                 = 10000;       //frequency (in Hz) for PWM controlling Flywheel motors
-int     fwSpeed;
+int     fwSpeed                   = 255;
 String  speedSelStr               = "";
 
 boolean isRevving                 = false;       // track if blaster firing         
 boolean isFiring                  = false;       // track if blaster firing
 boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
+int     currentScreen             = 0;
 
-
+boolean exit_menu                 = false;
 unsigned long timerSolenoidDetect = 0;
 boolean       isSolenoidExtended  = false;
-
 
 Adafruit_SSD1306 display(PIN_OLED_RESET);
 
@@ -220,10 +222,10 @@ void readVoltage() {
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: updateNormalDisplay
+// Function: updateDisplay
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-void updateNormalDisplay() {
+void updateDisplay() {
   readVoltage();
   int numOfCircle = 1;
   int intCurrentVolt = (int) (currentVoltage * 10);
@@ -298,6 +300,23 @@ void shutdownSys() {
   isFiring = false;
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Function: main menu
+//           
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+void menu(){
+   display.setTextSize(1);
+   display.setColor(WHITE);
+   display.setCursor(0,0);
+   display.println("MAIN MENU:");
+   display.println("Rate of fire");
+   
+   
+}
+
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: setup
 //           
@@ -337,14 +356,6 @@ void setup() { // initilze
   switchButton.attach(PIN_BUTTON;
   switchButton.interval(5);
 
-  pinMode(PIN_DARTRESET, INPUT_PULLUP);       // PULLUP
-  btnDartReset.attach(PIN_DARTRESET);
-  btnDartReset.interval(5);
-
-  pinMode(PIN_SAFETY, INPUT_PULLUP);          // PULLUP
-  btnSafety.attach(PIN_SAFETY);  
-  btnSafety.interval(5);
-
   pinMode(PIN_VOLTREAD, INPUT);               // Not using PULLUP analog read 0 to 1023
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,28 +368,56 @@ void setup() { // initilze
   digitalWrite(PIN_SOLENOID, LOW);
   pinMode(PIN_SOLENOID, OUTPUT);
   
-  magOut   = (digitalRead(PIN_DARTRESET) == HIGH);
-  safetyOn = (digitalRead(PIN_SAFETY) == LOW);
-  modeFire = 3 - ((digitalRead(PIN_SELECTOR_TWO) * 2) + (digitalRead(PIN_SELECTOR_ONE) * 1)); // 0, 1 or 2        
+  if (digitalRead(PIN_SELECTOR) == LOW){
+    modeFire = MODE_AUTO;
+  } else {
+    modeFire = MODE_SINGLE;
+  }       
 
-  isV2Mode   = (digitalRead(PIN_DARTTRIGGER) == LOW);
-  burstLimit = (isV2Mode) ? modeFire + 2 : DEFAULT_BURSTLIMIT;
-
-  fwSpeed     = (digitalRead(PIN_REV) == LOW) ? map(fwLimitArr[FW_HIGH] , 0, 100, 0, 255) : map(fwLimitArr[FW_LOW] , 0, 100, 0, 255);
-  speedSelStr = (digitalRead(PIN_REV) == LOW) ? "H" : "L";
+  
+  //fwSpeed     = (digitalRead(PIN_REV) == LOW) ? map(fwLimitArr[FW_HIGH] , 0, 100, 0, 255) : map(fwLimitArr[FW_LOW] , 0, 100, 0, 255);
+  //speedSelStr = (digitalRead(PIN_REV) == LOW) ? "H" : "L";
   
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
   display.clearDisplay();
-  if (magOut) {
-    dartLeft     = 0;
-    updateMagOutDisplay(); 
-  } else if (safetyOn) { 
-    updateSafetyDisplay();
-  } else {
-    dartLeft = ammoLimit;
-    updateDisplay();   
+
+  if (digitalRead(PIN_DARTTRIGGER) == LOW){
+    while(1){
+          btnTrigger.update(); //trigger acts as "select"
+          switchButton.update(); //button acts as "enter"
+         
+          switch(newState){
+            case (MAIN_MENU)):
+            if (newState != currentState){
+              
+            }
+            
+            //code
+            break;
+            case (ROF)):
+            //code
+            break;
+            case (AUTO_BURST)):
+            //code
+            break;
+            case (BURST_LIMIT)):
+            //code
+            break;
+
+          }
+
+
+
+
+
+          
+          if(switchButton.changed() || btnTrigger.changed()){
+            if (btnTrigger.read() == LOW && switchButton.read() == LOW){
+              break; //exits infinite loop
+            }
+          }  
+    }
   }
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: loop
@@ -429,13 +468,13 @@ void loop() { // Main Loop
     /////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (switchSelector.changed()) {  
-        if (switchSelector.read()){
+        if (switchSelector.read()){ //if selector is in full/burst position
           if(isBurst){
             modeFire = MODE_BURST;
           } else {
             modeFire = MODE_AUTO;
           }
-        } else {
+        } else { // single
            modeFire = MODE_SINGLE;
         }
     }    
