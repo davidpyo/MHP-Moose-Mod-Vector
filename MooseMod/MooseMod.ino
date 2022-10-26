@@ -35,7 +35,7 @@
 // https://code.google.com/archive/p/arduino-pwm-frequency-library/downloads
 // Note: unzip the files to the library folder, you might need to rename the folder name
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-#include <PWM.h>
+//#include <PWM.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Include the Adafruit-GFX library found here :
@@ -92,14 +92,14 @@
 #define AUTO_BURST                  2    //Selection of either burst/auto
 #define BURST_LIMIT                 3    //selection of how many darts per burst
 #define OP_SCREEN                   4    //operating screen after setup
-                                         
+#define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
+#define MINSOLENOIDDELAY            45                                       
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
 
 //int     modeROFSelected            = MODE_ROF_HIGH;   // track the ROF selected, set default to High
 
 int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
-int     delaySolenoidRetracted     = 45; //delay from when solenoid to fully retract to allow another extension
-
+int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
 int     burstLimit                 = 3;     // darts per burst
 
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
@@ -115,14 +115,20 @@ String  speedSelStr               = "";
 boolean isRevving                 = false;       // track if blaster firing         
 boolean isFiring                  = false;       // track if blaster firing
 boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
-int     currentScreen             = 0;
-
-boolean exit_menu                 = false;
+int     currentState              = 4;
+int     nextState                 = 0;
+boolean setupBlaster              =true;
+String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","Save and exit"};
 unsigned long timerSolenoidDetect = 0;
 boolean       isSolenoidExtended  = false;
 
-Adafruit_SSD1306 display(PIN_OLED_RESET);
+//Adafruit_SSD1306 display(PIN_OLED_RESET);
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // Declare and Instantiate Bounce objects
 Bounce btnRev            = Bounce(); 
 Bounce btnTrigger        = Bounce(); 
@@ -149,9 +155,9 @@ void shotFiringHandle() {
         isFiring = false;
         if (!isRevving) { // Rev button not pressed
           isRevving = false;
-          pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
+          //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
         }
-      } else if ((millis() - timerSolenoidDetect) >= delaySolenoidRetracted[modeROFSelected]) {
+      } else if ((millis() - timerSolenoidDetect) >= delaySolenoidRetracted) {
         digitalWrite(PIN_SOLENOID, HIGH); // Extend Solenoid
         isSolenoidExtended = true;
         timerSolenoidDetect = millis();
@@ -167,7 +173,7 @@ void shotFiringHandle() {
 void triggerPressedHandle(int caseModeFire) {  
   //updateSettingDisplay();
     if (!isRevving) {
-      pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
+      //pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
       delay(REV_UP_DELAY);
       isRevving = true;
     }
@@ -206,7 +212,7 @@ void triggerReleasedHandle() {
 // Function: readVoltage
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-void readVoltage() {
+/*void readVoltage() {
   int voltagePinAnalogValue = analogRead(PIN_VOLTREAD);
     
   // you might have to adjust the formula according to the voltage sensor you use
@@ -218,7 +224,7 @@ void readVoltage() {
   } else {
     currentVoltage = (newVoltage > BATTERY_MIN) ? newVoltage : currentVoltage;  
   }
-  batteryLow = (currentVoltage <= BATTERY_MIN);
+ // batteryLow = (currentVoltage <= BATTERY_MIN);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -275,7 +281,7 @@ void updateDisplay() {
     }
     
   display.setCursor(0,57);
-  display.println(rofLimitStrArr[modeROFSelected]);  
+ // display.println(rofLimitStrArr[modeROFSelected]);  
   
   display.setCursor(90,18);
   display.setTextSize(3);
@@ -287,7 +293,7 @@ void updateDisplay() {
   display.display();
 }
 
-
+*/
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: shutdown
@@ -296,7 +302,7 @@ void updateDisplay() {
 void shutdownSys() {
   dartToBeFire = 0;
   digitalWrite(PIN_SOLENOID, LOW);
-  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+ // pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
   isFiring = false;
 }
 
@@ -307,14 +313,158 @@ void shutdownSys() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void menu(){
    display.setTextSize(1);
-   display.setColor(WHITE);
-   display.setCursor(0,0);
-   display.println("MAIN MENU:");
-   display.println("Rate of fire");
-   
+   display.setTextColor(WHITE);
+   for (int i = 0; i <= 40; i += 10){
+    display.setCursor(0,i);
+    display.println(menus[i/10]);
+   }
+   display.display();
+   unsigned long menuTime  = millis();
+   boolean showCursor = true;
+   int menuCursor = 10;
+          
+   while(1){
+          if (millis() - menuTime >= 500){
+             
+             if (showCursor){
+              showCursor = false;
+              display.drawRect(0,menuCursor,128,10, WHITE);
+             } else {
+              showCursor = true;
+              display.clearDisplay();
+              for (int i = 0; i <= 40; i += 10){
+              display.setCursor(0,i);
+              display.println(menus[i/10]);
+              }
+
+              display.setCursor(0,menuCursor);
+              display.println(menus[menuCursor/10]);
+             }
+             display.display();
+          }
+          
+          btnTrigger.update(); //trigger acts as "confirm selection"
+          switchButton.update(); //button acts as "change value"
+          if (switchButton.fell()){
+              display.setCursor(0,menuCursor);
+              display.println(menus[menuCursor/10]);
+            if (menuCursor == 40){
+              menuCursor = 10;
+              menuTime -= 500;
+            } else{
+              menuCursor += 10;
+              menuTime -= 500; //so it updates the cursor location
+            }
+          }
+          if (btnTrigger.fell()){
+            nextState = menuCursor/10;
+            break;
+          }
+   }
    
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Function: Change Values
+//           
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+void changeValue(){
+   display.clearDisplay();
+   display.setTextSize(1);
+   display.setTextColor(WHITE);
+   display.setCursor(0,0);
+   display.println(menus[currentState]);
+            switch(currentState){
+            case (ROF):
+
+
+            display.setCursor(0,10);
+            display.print("Max value: ");
+            display.println("100");
+            display.print("Min Value: 45");
+            display.setCursor(0,30);
+            display.print(delaySolenoidRetracted);
+            break;
+            case (AUTO_BURST):
+            display.setCursor(0,10);
+            display.println("Burst: True");
+            display.println("Auto: False");
+            display.setCursor(0,30);
+            display.print(isBurst ? "True" : "False");
+            break;
+            case (BURST_LIMIT):
+            display.setCursor(0,10);
+            display.println("Max value: 10");
+            display.println("Min Value: 2");
+            display.setCursor(0,30);
+            display.print(burstLimit);
+            display.display();
+            break;
+            }
+   display.display();
+   
+   while(1){
+          display.setCursor(0,10);
+          btnTrigger.update(); //trigger acts as "confirm selection"
+          switchButton.update(); //button acts as "change value"
+          if (switchButton.fell()){
+            switch(currentState){
+            case (ROF):
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.println(menus[currentState]);
+            display.setCursor(0,10);
+            display.print("Max value: ");
+            display.println("100");
+            display.print("Min Value: 45");
+            display.setCursor(0,30);
+            delaySolenoidRetracted++;
+            if (delaySolenoidRetracted > MAXSOLENOIDDELAY){
+              delaySolenoidRetracted = MINSOLENOIDDELAY;
+            }
+            display.print(delaySolenoidRetracted);
+            display.display();
+            break;
+            case (AUTO_BURST):
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.println(menus[currentState]);
+            display.setCursor(0,10);
+            display.println("Burst: True");
+            display.println("Auto: False");
+            display.setCursor(0,30);
+            display.print(isBurst ? "True" : "False");
+            if (isBurst){
+              isBurst = false;
+            } else {
+              isBurst = true;
+            }
+            display.display();
+            break;
+            case (BURST_LIMIT):
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.println(menus[currentState]);
+            display.setCursor(0,10);
+            display.println("Max value: 10");
+            display.println("Min Value: 2");
+            display.setCursor(0,30);
+            burstLimit++;
+            if (burstLimit > 10){
+              burstLimit = 2;
+            }
+            display.print(burstLimit);
+            display.display();
+            break;
+            }
+          }
+          if (btnTrigger.fell()){
+            nextState = 0;
+            break;
+          }
+   }
+   
+}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -323,17 +473,17 @@ void menu(){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void setup() { // initilze  
   //initialize all timers except for 0, to save time keeping functions
-  InitTimersSafe();
+  //InitTimersSafe();
 
   //sets the frequency for the specified pin
-  bool success = SetPinFrequencySafe(PIN_FLYWHEEL_MOSFET, frequency);
+  //bool success = SetPinFrequencySafe(PIN_FLYWHEEL_MOSFET, frequency);
   
   // if the pin frequency was set successfully, turn pin 13 on, a visual check
   // can be commented away in final upload to arduino board
-  if(success) {
-    pinMode(13, OUTPUT);
-    digitalWrite(13, HIGH);    
-  }
+  //if(success) {
+    //pinMode(13, OUTPUT);
+    //digitalWrite(13, HIGH);    
+  //}
   
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // INPUT PINs setup
@@ -353,7 +503,7 @@ void setup() { // initilze
   switchSelector.interval(5);
 
   pinMode(PIN_BUTTON,INPUT_PULLUP);     // PULLUP
-  switchButton.attach(PIN_BUTTON;
+  switchButton.attach(PIN_BUTTON);
   switchButton.interval(5);
 
   pinMode(PIN_VOLTREAD, INPUT);               // Not using PULLUP analog read 0 to 1023
@@ -363,7 +513,7 @@ void setup() { // initilze
   ///////////////////////////////////////////////////////////////////////////////////////////////////////  
 
   pinMode (PIN_FLYWHEEL_MOSFET, OUTPUT);
-  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
+  //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
 
   digitalWrite(PIN_SOLENOID, LOW);
   pinMode(PIN_SOLENOID, OUTPUT);
@@ -382,42 +532,28 @@ void setup() { // initilze
   display.clearDisplay();
 
   if (digitalRead(PIN_DARTTRIGGER) == LOW){
-    while(1){
-          btnTrigger.update(); //trigger acts as "select"
-          switchButton.update(); //button acts as "enter"
-         
-          switch(newState){
-            case (MAIN_MENU)):
-            if (newState != currentState){
-              
+    while(setupBlaster){
+          switch(nextState){
+            case (MAIN_MENU):
+            if (nextState != currentState){
+              currentState = nextState;
+              menu();
             }
-            
-            //code
             break;
-            case (ROF)):
-            //code
+            case (5):
+            setupBlaster = false; //exit case
             break;
-            case (AUTO_BURST)):
-            //code
-            break;
-            case (BURST_LIMIT)):
-            //code
-            break;
+            default:
+              if (nextState != currentState){
+              currentState = nextState;
+              changeValue();
+            }    
 
           }
 
-
-
-
-
-          
-          if(switchButton.changed() || btnTrigger.changed()){
-            if (btnTrigger.read() == LOW && switchButton.read() == LOW){
-              break; //exits infinite loop
-            }
-          }  
     }
   }
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: loop
@@ -440,12 +576,12 @@ void loop() { // Main Loop
     if (btnRev.fell()) {                   // press    
         isRevving = true;
         // digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH); // start flywheels
-        pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
+        //pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
     } else if (btnRev.rose()) {        // released
       isRevving = false;
       if (!isFiring) {        
         // digitalWrite(PIN_FLYWHEEL_MOSFET, LOW); // stop flywheels
-        pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+       // pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
       }
     }
   
