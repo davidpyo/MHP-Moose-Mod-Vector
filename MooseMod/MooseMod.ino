@@ -91,7 +91,7 @@
 #define ROF                         1    //ROF menu
 #define AUTO_BURST                  2    //Selection of either burst/auto
 #define BURST_LIMIT                 3    //selection of how many darts per burst
-#define OP_SCREEN                   4    //operating screen after setup
+#define PWM                         4
 #define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
 #define MINSOLENOIDDELAY            45                                       
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
@@ -111,16 +111,18 @@ int     FW_HIGH                   = 1;
 int32_t frequency                 = 10000;       //frequency (in Hz) for PWM controlling Flywheel motors
 int     fwSpeed                   = 255;
 String  speedSelStr               = "";
-
+int     PWMSetting                = 100;
 boolean isRevving                 = false;       // track if blaster firing         
 boolean isFiring                  = false;       // track if blaster firing
 boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
 int     currentState              = 4;
 int     nextState                 = 0;
 boolean setupBlaster              =true;
-String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","Save and exit"};
+String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","PWM Settings","Save and exit"};
 unsigned long timerSolenoidDetect = 0;
 boolean       isSolenoidExtended  = false;
+float   battVoltage;
+unsigned long timer               = 0;
 
 //Adafruit_SSD1306 display(PIN_OLED_RESET);
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -212,19 +214,10 @@ void triggerReleasedHandle() {
 // Function: readVoltage
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*void readVoltage() {
-  int voltagePinAnalogValue = analogRead(PIN_VOLTREAD);
-    
+void readVoltage() {
   // you might have to adjust the formula according to the voltage sensor you use
-  int   voltagePinValue = (int) (voltagePinAnalogValue / 0.3890 );
-  float newVoltage      = (voltagePinValue / 100.0);
-
-  if (!batteryLow) {
-    currentVoltage = (newVoltage < currentVoltage) ? newVoltage : currentVoltage;      
-  } else {
-    currentVoltage = (newVoltage > BATTERY_MIN) ? newVoltage : currentVoltage;  
-  }
- // batteryLow = (currentVoltage <= BATTERY_MIN);
+  battVoltage = (analogRead(PIN_VOLTREAD) * 0.245); //converts digital to a voltage
+  //0.0245 comes from fixed point calculation of (5/1024) * 5 * 10
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -232,68 +225,34 @@ void triggerReleasedHandle() {
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void updateDisplay() {
+  
   readVoltage();
-  int numOfCircle = 1;
-  int intCurrentVolt = (int) (currentVoltage * 10);
-
-  if (intCurrentVolt < BATTERY_MIN_3DIGIT) {
-    intCurrentVolt = BATTERY_MIN_3DIGIT;
-  } else if (intCurrentVolt > BATTERY_MAX_3DIGIT) {
-    intCurrentVolt = BATTERY_MAX_3DIGIT;
-  }
-  
-  int batt = map(intCurrentVolt, BATTERY_MIN_3DIGIT, BATTERY_MAX_3DIGIT, 0, 16);
-
   display.clearDisplay();
-  
-  display.fillRect(0, 0, (8*batt), 4, WHITE);
-  for (int i=1; i<=batt; i++) {
-    display.drawLine(i*8, 0, i*8, 4, BLACK);
-  }
-  
+  display.setTextSize(2);
+  display.setCursor(0,0);
+  display.println(battVoltage/10,1);
   display.setTextSize(1);
-  display.setTextColor(WHITE);
-
-  display.setCursor(0,8);
-  display.print(">> ");
-  display.print(currentVoltage);
-  display.println(" volts");  
-  
-  display.setCursor(0,19);
-  display.print(speedSelStr);
-  display.println("-TEXE-V6-<T>");  
-  
-  display.setCursor(0,32);
-  
-  switch(modeFire) {
-      case MODE_SINGLE: 
-          display.println("Single Shot");  
-        break;
-      case MODE_BURST : 
-          numOfCircle = burstLimit;
-          display.print(burstLimit);          
-          display.println(" Rounds Burst");  
-        break;
-      case MODE_AUTO  : 
-          numOfCircle = 10;
-          display.println("Full Auto");  
-        break;
-    }
-    
-  display.setCursor(0,57);
- // display.println(rofLimitStrArr[modeROFSelected]);  
-  
-  display.setCursor(90,18);
-  display.setTextSize(3);
-  display.println(dartLeft);  
-
-  for(int i=0; i<numOfCircle; i++) {
-    display.fillCircle((i * 9) + 3, 48, 3, WHITE);
+  switch(modeFire){
+    case(MODE_SINGLE):
+    display.println("SEMI");
+    break;
+    case(MODE_BURST):
+    display.println("BURST");
+    break;
+    case(MODE_AUTO):
+    display.println("AUTO");
+    break;
   }
+  display.print("ROF: ");
+  display.println(delaySolenoidRetracted);
+  display.print("Burst Limit :");
+  display.println(burstLimit);
+  display.print("PWM :");
+  display.println(PWMSetting);
   display.display();
 }
 
-*/
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: shutdown
@@ -314,7 +273,7 @@ void shutdownSys() {
 void menu(){
    display.setTextSize(1);
    display.setTextColor(WHITE);
-   for (int i = 0; i <= 40; i += 10){
+   for (int i = 0; i <= 50; i += 10){
     display.setCursor(0,i);
     display.println(menus[i/10]);
    }
@@ -332,7 +291,7 @@ void menu(){
              } else {
               showCursor = true;
               display.clearDisplay();
-              for (int i = 0; i <= 40; i += 10){
+              for (int i = 0; i <= 50; i += 10){
               display.setCursor(0,i);
               display.println(menus[i/10]);
               }
@@ -348,7 +307,7 @@ void menu(){
           if (switchButton.fell()){
               display.setCursor(0,menuCursor);
               display.println(menus[menuCursor/10]);
-            if (menuCursor == 40){
+            if (menuCursor == 50){
               menuCursor = 10;
               menuTime -= 500;
             } else{
@@ -399,6 +358,12 @@ void changeValue(){
             display.setCursor(0,30);
             display.print(burstLimit);
             display.display();
+            break;
+            case (PWM):
+            display.setCursor(0,10);
+            display.println("Max value: 100");
+            display.println("Min Value: 50");
+            display.println(PWMSetting);
             break;
             }
    display.display();
@@ -454,6 +419,20 @@ void changeValue(){
               burstLimit = 2;
             }
             display.print(burstLimit);
+            display.display();
+            break;
+            case (PWM):
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.println(menus[currentState]);
+            display.setCursor(0,10);
+            display.println("Max value: 100");
+            display.println("Min Value: 50");
+            PWMSetting++;
+            if (PWMSetting >100){
+              PWMSetting = 50;
+            }
+            display.println(PWMSetting);
             display.display();
             break;
             }
@@ -553,6 +532,9 @@ void setup() { // initilze
 
     }
   }
+
+  updateDisplay();
+  timer = millis();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -603,7 +585,8 @@ void loop() { // Main Loop
     // Listen to Firing Mode change: Single Shot, Burst, Full Auto
     /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    if (switchSelector.changed()) {  
+    if (switchSelector.changed()) {
+        timer -= 6000; //update display  
         if (switchSelector.read()){ //if selector is in full/burst position
           if(isBurst){
             modeFire = MODE_BURST;
@@ -613,7 +596,11 @@ void loop() { // Main Loop
         } else { // single
            modeFire = MODE_SINGLE;
         }
-    }    
+    }
+
+    if (millis() - timer > 5000){
+      updateDisplay();    
+    }
 
 }
 
