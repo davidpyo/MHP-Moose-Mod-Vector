@@ -35,7 +35,7 @@
 // https://code.google.com/archive/p/arduino-pwm-frequency-library/downloads
 // Note: unzip the files to the library folder, you might need to rename the folder name
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-//#include <PWM.h>
+#include <PWM.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Include the Adafruit-GFX library found here :
@@ -105,13 +105,10 @@ int     burstLimit                 = 3;     // darts per burst
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
 int     dartToBeFire              = 0;           // track amount of dart(s) to fire when trigger pulled, 0 by default
 
-int     fwLimitArr []             = {75, 100};   // number are in percentage
-int     FW_LOW                    = 0;
-int     FW_HIGH                   = 1;
 int32_t frequency                 = 10000;       //frequency (in Hz) for PWM controlling Flywheel motors
 int     fwSpeed                   = 255;
 String  speedSelStr               = "";
-int     PWMSetting                = 100;
+int     PWMSetting                = 100;         //in percentage
 boolean isRevving                 = false;       // track if blaster firing         
 boolean isFiring                  = false;       // track if blaster firing
 boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
@@ -157,7 +154,7 @@ void shotFiringHandle() {
         isFiring = false;
         if (!isRevving) { // Rev button not pressed
           isRevving = false;
-          //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
+          pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
         }
       } else if ((millis() - timerSolenoidDetect) >= delaySolenoidRetracted) {
         digitalWrite(PIN_SOLENOID, HIGH); // Extend Solenoid
@@ -175,7 +172,7 @@ void shotFiringHandle() {
 void triggerPressedHandle(int caseModeFire) {  
   //updateSettingDisplay();
     if (!isRevving) {
-      //pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
+      pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
       delay(REV_UP_DELAY);
       isRevving = true;
     }
@@ -261,7 +258,7 @@ void updateDisplay() {
 void shutdownSys() {
   dartToBeFire = 0;
   digitalWrite(PIN_SOLENOID, LOW);
- // pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
   isFiring = false;
 }
 
@@ -452,17 +449,17 @@ void changeValue(){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void setup() { // initilze  
   //initialize all timers except for 0, to save time keeping functions
-  //InitTimersSafe();
+  InitTimersSafe();
 
   //sets the frequency for the specified pin
-  //bool success = SetPinFrequencySafe(PIN_FLYWHEEL_MOSFET, frequency);
+  bool success = SetPinFrequencySafe(PIN_FLYWHEEL_MOSFET, frequency);
   
   // if the pin frequency was set successfully, turn pin 13 on, a visual check
   // can be commented away in final upload to arduino board
-  //if(success) {
-    //pinMode(13, OUTPUT);
-    //digitalWrite(13, HIGH);    
-  //}
+  if(success) {
+    pinMode(13, OUTPUT);
+    digitalWrite(13, HIGH);    
+  }
   
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // INPUT PINs setup
@@ -492,7 +489,7 @@ void setup() { // initilze
   ///////////////////////////////////////////////////////////////////////////////////////////////////////  
 
   pinMode (PIN_FLYWHEEL_MOSFET, OUTPUT);
-  //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
+  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
 
   digitalWrite(PIN_SOLENOID, LOW);
   pinMode(PIN_SOLENOID, OUTPUT);
@@ -504,8 +501,7 @@ void setup() { // initilze
   }       
 
   
-  //fwSpeed     = (digitalRead(PIN_REV) == LOW) ? map(fwLimitArr[FW_HIGH] , 0, 100, 0, 255) : map(fwLimitArr[FW_LOW] , 0, 100, 0, 255);
-  //speedSelStr = (digitalRead(PIN_REV) == LOW) ? "H" : "L";
+  fwSpeed =  map(PWMSetting , 0, 100, 0, 255);
   
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
   display.clearDisplay();
@@ -558,12 +554,12 @@ void loop() { // Main Loop
     if (btnRev.fell()) {                   // press    
         isRevving = true;
         // digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH); // start flywheels
-        //pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
+        pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
     } else if (btnRev.rose()) {        // released
       isRevving = false;
       if (!isFiring) {        
         // digitalWrite(PIN_FLYWHEEL_MOSFET, LOW); // stop flywheels
-       // pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+       pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
       }
     }
   
