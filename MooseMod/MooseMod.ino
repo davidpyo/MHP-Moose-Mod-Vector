@@ -546,7 +546,7 @@ void loop() { // Main Loop
     btnRev.update();
     btnTrigger.update();
     switchSelector.update();
-    switchButton.update();    
+    //switchButton.update();    
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     // Listen to Rev Press/Release
@@ -595,7 +595,8 @@ void loop() { // Main Loop
     }
 
     if (millis() - timer > 5000){
-      updateDisplay();    
+      updateDisplay();
+      timer = millis();    
     }
 
 }
