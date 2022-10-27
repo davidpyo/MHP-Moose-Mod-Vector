@@ -242,9 +242,9 @@ void updateDisplay() {
   }
   display.print("ROF: ");
   display.println(delaySolenoidRetracted);
-  display.print("Burst Limit :");
+  display.print("Burst Limit: ");
   display.println(burstLimit);
-  display.print("PWM :");
+  display.print("PWM: ");
   display.println(PWMSetting);
   display.display();
 }
@@ -281,7 +281,7 @@ void menu(){
           
    while(1){
           if (millis() - menuTime >= 500){
-             
+             menuTime = millis();
              if (showCursor){
               showCursor = false;
               display.drawRect(0,menuCursor,128,10, WHITE);
@@ -490,9 +490,9 @@ void setup() { // initilze
 
   pinMode (PIN_FLYWHEEL_MOSFET, OUTPUT);
   pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
-
-  digitalWrite(PIN_SOLENOID, LOW);
   pinMode(PIN_SOLENOID, OUTPUT);
+  digitalWrite(PIN_SOLENOID, LOW);
+  
   
   if (digitalRead(PIN_SELECTOR) == LOW){
     modeFire = MODE_AUTO;
