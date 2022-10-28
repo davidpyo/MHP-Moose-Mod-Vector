@@ -3,18 +3,11 @@
 *
 * Description
 * Program for MHP Moose Mod Vector 
-* Forked from the original, removes safety, dart counter functionality. 
+* Forked from the original, removes safety, dart counter functionality,
+*  adds menu options, selector switch. 
 * 
-* created  13 Jun 2019
 * modified 25 Oct 2022
-* by TungstenEXE, /u/dpairsoft
-* 
-* For non commercial use
-* 
-* If you find my code useful, do support me by subscribing my YouTube Channel, thanks.
-*
-* Original Creator YouTube Channel Link - Nerf related
-* https://www.youtube.com/tungstenexe
+* by David Pyo
 * 
 * Board used      - Arduino Nano
 * Pusher Motor    - 35 mm Generic OOD Solenoid
@@ -73,20 +66,11 @@
 // End Of PIN Assigment
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//#define BURST_UPPER_LIMIT           4    // Maxmimum burst configurable
-//#define BURST_LOWER_LIMIT           2    // Minimum burst configurable
 
 #define MODE_SINGLE                 0    // Integer constant to indicate firing single shot
 #define MODE_BURST                  1    // Integer constant to indicate firing burst
 #define MODE_AUTO                   2    // Integer constant to indicate firing full auto
-//#define NUM_OF_MODE                 3    // Number of mode available
 
-//#define DEFAULT_BURSTLIMIT          3    // Default number of burst fire darts
-
-//#define MODE_ROF_LOW                0    // Integer constant to indicate low rate of fire 
-//#define MODE_ROF_STANDARD           1    // Integer constant to indicate standard rate of fire 
-//#define MODE_ROF_HIGH               2    // Integer constant to indicate highest rate of fire 
-//#define NUM_OF_MODE_ROF             3    // Number of ROF available
 #define MAIN_MENU                   0    //main menu
 #define ROF                         1    //ROF menu
 #define AUTO_BURST                  2    //Selection of either burst/auto
@@ -94,9 +78,13 @@
 #define PWM                         4
 #define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
 #define MINSOLENOIDDELAY            45                                       
-#define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
+#define REV_UP_DELAY                1   // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
+//Adafruit_SSD1306 display(PIN_OLED_RESET);
+#define SCREEN_WIDTH                128 // OLED display width, in pixels
+#define SCREEN_HEIGHT               64 // OLED display height, in pixels
 
-//int     modeROFSelected            = MODE_ROF_HIGH;   // track the ROF selected, set default to High
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+#define OLED_RESET                 -1
 
 int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
 int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
@@ -121,12 +109,7 @@ boolean       isSolenoidExtended  = false;
 float   battVoltage;
 unsigned long timer               = 0;
 
-//Adafruit_SSD1306 display(PIN_OLED_RESET);
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+//declare display 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // Declare and Instantiate Bounce objects
 Bounce btnRev            = Bounce(); 
@@ -250,17 +233,6 @@ void updateDisplay() {
 }
 
 
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: shutdown
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-void shutdownSys() {
-  dartToBeFire = 0;
-  digitalWrite(PIN_SOLENOID, LOW);
-  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
-  isFiring = false;
-}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +440,7 @@ void setup() { // initilze
    
   pinMode(PIN_REV,INPUT_PULLUP);              // PULLUP
   btnRev.attach(PIN_REV);
-  btnRev.interval(5);
+  btnRev.interval(5);                         //debounce period
     
   pinMode(PIN_DARTTRIGGER,INPUT_PULLUP);      // PULLUP
   btnTrigger.attach(PIN_DARTTRIGGER);
@@ -540,7 +512,7 @@ void setup() { // initilze
 void loop() { // Main Loop  
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Update all buttons
+    // poll all buttons
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     
     btnRev.update();
