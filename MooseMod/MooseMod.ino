@@ -1,59 +1,19 @@
-/********************************************************************************************************
-* MHP Moose Mod Vector
-*
-* Description
-* Program for MHP Moose Mod Vector 
-* Forked from the original, removes safety, dart counter functionality. 
-* 
-* created  13 Jun 2019
-* modified 25 Oct 2022
-* by TungstenEXE, /u/dpairsoft
-* 
-* For non commercial use
-* 
-* If you find my code useful, do support me by subscribing my YouTube Channel, thanks.
-*
-* Original Creator YouTube Channel Link - Nerf related
-* https://www.youtube.com/tungstenexe
-* 
-* Board used      - Arduino Nano
-* Pusher Motor    - 35 mm Generic OOD Solenoid
-* FlyWheel Motors - Dual Stage Loki + Kraken Motors, pulsar flywheels
-********************************************************************************************************/
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Include the Bounce2 library found here :
 // https://github.com/thomasfredericks/Bounce-Arduino-Wiring
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include <Bounce2.h>
 #include <Servo.h>
 
 #include <SPI.h>
 #include <Wire.h>
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Include the PWM library, to change the PWM Frequency for pin controlling the flywheel, found here :
 // https://code.google.com/archive/p/arduino-pwm-frequency-library/downloads
-// Note: unzip the files to the library folder, you might need to rename the folder name
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include <PWM.h>
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Include the Adafruit-GFX library found here :
-// https://github.com/adafruit/Adafruit-GFX-Library
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <Adafruit_GFX.h>
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Include the Adafruit_SSD1306 library found here :
-// https://github.com/adafruit/Adafruit_SSD1306
-// you might need to comment away the line "#define SSD1306_128_32" and uncomment the line
-// "#define SSD1306_128_64" so that the display works for OLED screen size 128 by 64
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <Adafruit_SSD1306.h>
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// PIN Assigment
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// The colors for for my wiring reference only, you can use your own color
 
 #define PIN_FLYWHEEL_MOSFET         3    // (Orange) PIN to control DC Flywheel MOSFET 
 #define PIN_OLED_RESET              -1    //          for OLED
@@ -69,24 +29,10 @@
 // Note                             A5      (Yellow) are used by the OLED SCL (Yellow)
 #define PIN_VOLTREAD                A6   // (Yellow) PIN to receive voltage reading from battery 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// End Of PIN Assigment
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//#define BURST_UPPER_LIMIT           4    // Maxmimum burst configurable
-//#define BURST_LOWER_LIMIT           2    // Minimum burst configurable
 
 #define MODE_SINGLE                 0    // Integer constant to indicate firing single shot
 #define MODE_BURST                  1    // Integer constant to indicate firing burst
 #define MODE_AUTO                   2    // Integer constant to indicate firing full auto
-//#define NUM_OF_MODE                 3    // Number of mode available
-
-//#define DEFAULT_BURSTLIMIT          3    // Default number of burst fire darts
-
-//#define MODE_ROF_LOW                0    // Integer constant to indicate low rate of fire 
-//#define MODE_ROF_STANDARD           1    // Integer constant to indicate standard rate of fire 
-//#define MODE_ROF_HIGH               2    // Integer constant to indicate highest rate of fire 
-//#define NUM_OF_MODE_ROF             3    // Number of ROF available
 #define MAIN_MENU                   0    //main menu
 #define ROF                         1    //ROF menu
 #define AUTO_BURST                  2    //Selection of either burst/auto
@@ -96,24 +42,21 @@
 #define MINSOLENOIDDELAY            45                                       
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
 
-//int     modeROFSelected            = MODE_ROF_HIGH;   // track the ROF selected, set default to High
-
 int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
 int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
 int     burstLimit                 = 3;     // darts per burst
-
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
 int     dartToBeFire              = 0;           // track amount of dart(s) to fire when trigger pulled, 0 by default
 
 int32_t frequency                 = 10000;       //frequency (in Hz) for PWM controlling Flywheel motors
-int     fwSpeed                   = 255;
-String  speedSelStr               = "";
+int     fwSpeed                   = 255;         //flywheel speed from 0-255
 int     PWMSetting                = 100;         //in percentage
 boolean isRevving                 = false;       // track if blaster firing         
 boolean isFiring                  = false;       // track if blaster firing
 boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
 int     currentState              = 4;
 int     nextState                 = 0;
+
 boolean setupBlaster              =true;
 String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","PWM Settings","Save and exit"};
 unsigned long timerSolenoidDetect = 0;
@@ -135,10 +78,9 @@ Bounce switchSelector    = Bounce();
 Bounce switchButton      = Bounce();
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: shotFiredHandle
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void shotFiringHandle() {
   if (isFiring) {
     if (isSolenoidExtended) {
@@ -165,10 +107,9 @@ void shotFiringHandle() {
   }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: triggerPressedHandle
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void triggerPressedHandle(int caseModeFire) {  
   //updateSettingDisplay();
     if (!isRevving) {
@@ -195,10 +136,8 @@ void triggerPressedHandle(int caseModeFire) {
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: triggerReleasedHandle
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void triggerReleasedHandle() {  
   if (((modeFire == MODE_AUTO) || (modeFire == MODE_BURST)) && isFiring) {
     if (dartToBeFire > 1) {      
@@ -207,20 +146,18 @@ void triggerReleasedHandle() {
   }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: readVoltage
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void readVoltage() {
   // you might have to adjust the formula according to the voltage sensor you use
   battVoltage = (analogRead(PIN_VOLTREAD) * 0.245); //converts digital to a voltage
   //0.0245 comes from fixed point calculation of (5/1024) * 5 * 10
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: updateDisplay
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void updateDisplay() {
   
   readVoltage();
@@ -251,10 +188,9 @@ void updateDisplay() {
 
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: shutdown
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void shutdownSys() {
   dartToBeFire = 0;
   digitalWrite(PIN_SOLENOID, LOW);
@@ -263,10 +199,9 @@ void shutdownSys() {
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: main menu
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void menu(){
    display.setTextSize(1);
    display.setTextColor(WHITE);
@@ -320,10 +255,8 @@ void menu(){
    
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Function: Change Values
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void changeValue(){
    display.clearDisplay();
    display.setTextSize(1);
@@ -443,10 +376,9 @@ void changeValue(){
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Function: setup
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 void setup() { // initilze  
   //initialize all timers except for 0, to save time keeping functions
   InitTimersSafe();
@@ -461,10 +393,9 @@ void setup() { // initilze
     digitalWrite(13, HIGH);    
   }
   
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
   // INPUT PINs setup
   // Note: Most input pins will be using internal pull-up resistor. A fall in signal indicate button pressed.
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
    
   pinMode(PIN_REV,INPUT_PULLUP);              // PULLUP
   btnRev.attach(PIN_REV);
@@ -484,9 +415,8 @@ void setup() { // initilze
 
   pinMode(PIN_VOLTREAD, INPUT);               // Not using PULLUP analog read 0 to 1023
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
   // OUTPUT PINs setup
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////  
 
   pinMode (PIN_FLYWHEEL_MOSFET, OUTPUT);
   pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
@@ -533,24 +463,22 @@ void setup() { // initilze
   timer = millis();
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Function: loop
-//           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void loop() { // Main Loop  
     
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
     // Update all buttons
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
     
     btnRev.update();
     btnTrigger.update();
     switchSelector.update();
     //switchButton.update();    
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // Listen to Rev Press/Release
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     if (btnRev.fell()) {                   // press    
         isRevving = true;
         // digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH); // start flywheels
@@ -563,23 +491,21 @@ void loop() { // Main Loop
       }
     }
   
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
     // Listen to Trigger Pull/Release
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     if (btnTrigger.fell()) {               // pull
         triggerPressedHandle(modeFire);        
     } else if (btnTrigger.rose()) {        // released
         triggerReleasedHandle();
     }
   
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // Listen to Firing
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     shotFiringHandle();
-  
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     // Listen to Firing Mode change: Single Shot, Burst, Full Auto
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
 
     if (switchSelector.changed()) {
         timer -= 6000; //update display  
@@ -600,7 +526,3 @@ void loop() { // Main Loop
     }
 
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-// END OF PROGRAM           
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
