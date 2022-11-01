@@ -312,24 +312,23 @@ void changeValue(){
 
 
             display.setCursor(0,10);
-            display.print("Max value: ");
-            display.println("100");
-            display.print("Min Value: 0");
-            display.setCursor(0,30);
+            display.println("Max value: 100");
+            display.println("Min Value: 0");
+            //display.setCursor(0,30);
             display.print(delayOffset);
             break;
             case (AUTO_BURST):
             display.setCursor(0,10);
             display.println("Burst: True");
             display.println("Auto: False");
-            display.setCursor(0,30);
+            //display.setCursor(0,30);
             display.print(isBurst ? "True" : "False");
             break;
             case (BURST_LIMIT):
             display.setCursor(0,10);
             display.println("Max value: 10");
             display.println("Min Value: 2");
-            display.setCursor(0,30);
+            //display.setCursor(0,30);
             display.print(burstLimit);
             display.display();
             break;
@@ -343,7 +342,6 @@ void changeValue(){
    display.display();
    
    while(1){
-          display.setCursor(0,10);
           btnTrigger.update(); //trigger acts as "confirm selection"
           switchButton.update(); //button acts as "change value"
           if (switchButton.fell()){
@@ -352,11 +350,10 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
-            display.print("Max value: ");
-            display.println("100");
-            display.print("Min Value: 0");
-            display.setCursor(0,30);
+            //display.setCursor(0,10);
+            display.println("Max value: 100");
+            display.println("Min Value: 0");
+            //display.setCursor(0,30);
             delayOffset += 10;
             if (delayOffset > 100){
               delayOffset = 0;
@@ -368,10 +365,10 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
+            //display.setCursor(0,10);
             display.println("Burst: True");
             display.println("Auto: False");
-            display.setCursor(0,30);
+           // display.setCursor(0,30);
             display.print(isBurst ? "True" : "False");
             if (isBurst){
               isBurst = false;
@@ -384,10 +381,10 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
+           // display.setCursor(0,10);
             display.println("Max value: 10");
             display.println("Min Value: 2");
-            display.setCursor(0,30);
+            //display.setCursor(0,30);
             burstLimit++;
             if (burstLimit > 10){
               burstLimit = 2;
@@ -399,7 +396,7 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
+            //display.setCursor(0,10);
             display.println("Max value: 100");
             display.println("Min Value: 50");
             PWMSetting++;
