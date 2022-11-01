@@ -85,7 +85,7 @@
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET                 -1
-
+int     delayOffset                = 0;
 int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
 int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
 int     burstLimit                 = 3;     // darts per burst
@@ -123,6 +123,11 @@ Bounce switchButton      = Bounce();
 //           
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 void shotFiringHandle() {
+  if(fireMode == MODE_SINGLE){
+    delaySolenoidRetracted = MINSOLENOIDDELAY;
+  } else {
+    delaySolenoidRetracted = MINSOLENOIDDELAY + delayOffset;
+  }
   if (isFiring) {
     if (isSolenoidExtended) {
       if ((millis() - timerSolenoidDetect) >= delaySolenoidExtended) {
@@ -309,9 +314,9 @@ void changeValue(){
             display.setCursor(0,10);
             display.print("Max value: ");
             display.println("100");
-            display.print("Min Value: 45");
+            display.print("Min Value: 0");
             display.setCursor(0,30);
-            display.print(delaySolenoidRetracted);
+            display.print(delayOffset);
             break;
             case (AUTO_BURST):
             display.setCursor(0,10);
@@ -350,13 +355,13 @@ void changeValue(){
             display.setCursor(0,10);
             display.print("Max value: ");
             display.println("100");
-            display.print("Min Value: 45");
+            display.print("Min Value: 0");
             display.setCursor(0,30);
-            delaySolenoidRetracted++;
-            if (delaySolenoidRetracted > MAXSOLENOIDDELAY){
-              delaySolenoidRetracted = MINSOLENOIDDELAY;
+            delayOffset += 10;
+            if (delayOffset > 100){
+              delayOffset = 0;
             }
-            display.print(delaySolenoidRetracted);
+            display.print(delayOffset);
             display.display();
             break;
             case (AUTO_BURST):
