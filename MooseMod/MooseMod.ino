@@ -39,10 +39,10 @@
 #define BURST_LIMIT                 3    //selection of how many darts per burst
 #define PWM                         4
 #define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
-#define MINSOLENOIDDELAY            45                                       
+#define MINSOLENOIDDELAY            55                                       
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
 
-int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
+int     delaySolenoidExtended      = 40; //delay for solenoid to fully extend
 int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
 int     burstLimit                 = 3;     // darts per burst
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
@@ -469,7 +469,6 @@ void setup() { // initilze
 void loop() { // Main Loop  
     
     // Update all buttons
-
     
     btnRev.update();
     btnTrigger.update();
