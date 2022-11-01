@@ -1,4 +1,3 @@
-
 // Include the Bounce2 library found here :
 // https://github.com/thomasfredericks/Bounce-Arduino-Wiring
 
@@ -30,19 +29,36 @@
 #define PIN_VOLTREAD                A6   // (Yellow) PIN to receive voltage reading from battery 
 
 
+
 #define MODE_SINGLE                 0    // Integer constant to indicate firing single shot
 #define MODE_BURST                  1    // Integer constant to indicate firing burst
 #define MODE_AUTO                   2    // Integer constant to indicate firing full auto
+
 #define MAIN_MENU                   0    //main menu
 #define ROF                         1    //ROF menu
 #define AUTO_BURST                  2    //Selection of either burst/auto
 #define BURST_LIMIT                 3    //selection of how many darts per burst
 #define PWM                         4
+<<<<<<< HEAD
 #define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
 #define MINSOLENOIDDELAY            55                                       
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
 
 int     delaySolenoidExtended      = 40; //delay for solenoid to fully extend
+
+//#define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
+#define MINSOLENOIDDELAY            45                                       
+#define REV_UP_DELAY                40   // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
+//Adafruit_SSD1306 display(PIN_OLED_RESET);
+#define SCREEN_WIDTH                128 // OLED display width, in pixels
+#define SCREEN_HEIGHT               64 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+#define OLED_RESET                 -1
+
+int     delayOffset                = 0;
+int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
+
 int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
 int     burstLimit                 = 3;     // darts per burst
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
@@ -54,22 +70,13 @@ int     PWMSetting                = 100;         //in percentage
 boolean isRevving                 = false;       // track if blaster firing         
 boolean isFiring                  = false;       // track if blaster firing
 boolean isBurst                   = false;       // track selector switch behavior for burst/full.        
-int     currentState              = 4;
-int     nextState                 = 0;
 
-boolean setupBlaster              =true;
-String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","PWM Settings","Save and exit"};
 unsigned long timerSolenoidDetect = 0;
 boolean       isSolenoidExtended  = false;
 float   battVoltage;
 unsigned long timer               = 0;
 
-//Adafruit_SSD1306 display(PIN_OLED_RESET);
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
-// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+//declare display 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // Declare and Instantiate Bounce objects
 Bounce btnRev            = Bounce(); 
@@ -82,6 +89,11 @@ Bounce switchButton      = Bounce();
 // Function: shotFiredHandle
 
 void shotFiringHandle() {
+  if(fireMode == MODE_SINGLE){
+    delaySolenoidRetracted = MINSOLENOIDDELAY;
+  } else {
+    delaySolenoidRetracted = MINSOLENOIDDELAY + delayOffset;
+  }
   if (isFiring) {
     if (isSolenoidExtended) {
       if ((millis() - timerSolenoidDetect) >= delaySolenoidExtended) {
@@ -139,10 +151,8 @@ void triggerPressedHandle(int caseModeFire) {
 // Function: triggerReleasedHandle
 
 void triggerReleasedHandle() {  
-  if (((modeFire == MODE_AUTO) || (modeFire == MODE_BURST)) && isFiring) {
-    if (dartToBeFire > 1) {      
+  if (((modeFire == MODE_AUTO) || (modeFire == MODE_BURST)) && isFiring && (dartToBeFire > 1)) {
       dartToBeFire = 1;    // fire off last shot
-    }
   }
 }
 
@@ -178,7 +188,7 @@ void updateDisplay() {
     break;
   }
   display.print("ROF: ");
-  display.println(delaySolenoidRetracted);
+  display.println(delayOffset);
   display.print("Burst Limit: ");
   display.println(burstLimit);
   display.print("PWM: ");
@@ -186,17 +196,6 @@ void updateDisplay() {
   display.display();
 }
 
-
-
-
-// Function: shutdown
-
-void shutdownSys() {
-  dartToBeFire = 0;
-  digitalWrite(PIN_SOLENOID, LOW);
-  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
-  isFiring = false;
-}
 
 
 
@@ -268,24 +267,23 @@ void changeValue(){
 
 
             display.setCursor(0,10);
-            display.print("Max value: ");
-            display.println("100");
-            display.print("Min Value: 45");
-            display.setCursor(0,30);
-            display.print(delaySolenoidRetracted);
+            display.println("Max value: 100");
+            display.println("Min Value: 0");
+            //display.setCursor(0,30);
+            display.print(delayOffset);
             break;
             case (AUTO_BURST):
             display.setCursor(0,10);
             display.println("Burst: True");
             display.println("Auto: False");
-            display.setCursor(0,30);
+            //display.setCursor(0,30);
             display.print(isBurst ? "True" : "False");
             break;
             case (BURST_LIMIT):
             display.setCursor(0,10);
             display.println("Max value: 10");
             display.println("Min Value: 2");
-            display.setCursor(0,30);
+            //display.setCursor(0,30);
             display.print(burstLimit);
             display.display();
             break;
@@ -299,7 +297,6 @@ void changeValue(){
    display.display();
    
    while(1){
-          display.setCursor(0,10);
           btnTrigger.update(); //trigger acts as "confirm selection"
           switchButton.update(); //button acts as "change value"
           if (switchButton.fell()){
@@ -308,26 +305,25 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
-            display.print("Max value: ");
-            display.println("100");
-            display.print("Min Value: 45");
-            display.setCursor(0,30);
-            delaySolenoidRetracted++;
-            if (delaySolenoidRetracted > MAXSOLENOIDDELAY){
-              delaySolenoidRetracted = MINSOLENOIDDELAY;
+            //display.setCursor(0,10);
+            display.println("Max value: 100");
+            display.println("Min Value: 0");
+            //display.setCursor(0,30);
+            delayOffset += 10;
+            if (delayOffset > 100){
+              delayOffset = 0;
             }
-            display.print(delaySolenoidRetracted);
+            display.print(delayOffset);
             display.display();
             break;
             case (AUTO_BURST):
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
+            //display.setCursor(0,10);
             display.println("Burst: True");
             display.println("Auto: False");
-            display.setCursor(0,30);
+           // display.setCursor(0,30);
             display.print(isBurst ? "True" : "False");
             if (isBurst){
               isBurst = false;
@@ -340,10 +336,10 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
+           // display.setCursor(0,10);
             display.println("Max value: 10");
             display.println("Min Value: 2");
-            display.setCursor(0,30);
+            //display.setCursor(0,30);
             burstLimit++;
             if (burstLimit > 10){
               burstLimit = 2;
@@ -355,7 +351,7 @@ void changeValue(){
             display.clearDisplay();
             display.setCursor(0,0);
             display.println(menus[currentState]);
-            display.setCursor(0,10);
+            //display.setCursor(0,10);
             display.println("Max value: 100");
             display.println("Min Value: 50");
             PWMSetting++;
@@ -380,8 +376,15 @@ void changeValue(){
 
 
 void setup() { // initilze  
+  //setup vars
+  boolean setupBlaster = true;
+  int     currentState              = 4;
+  int     nextState                 = 0;
+  String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","PWM Settings","Save and exit"};
+  
   //initialize all timers except for 0, to save time keeping functions
   InitTimersSafe();
+  //sets up the setup loop if trigger is pulled
 
   //sets the frequency for the specified pin
   bool success = SetPinFrequencySafe(PIN_FLYWHEEL_MOSFET, frequency);
@@ -399,7 +402,7 @@ void setup() { // initilze
    
   pinMode(PIN_REV,INPUT_PULLUP);              // PULLUP
   btnRev.attach(PIN_REV);
-  btnRev.interval(5);
+  btnRev.interval(5);                         //debounce period
     
   pinMode(PIN_DARTTRIGGER,INPUT_PULLUP);      // PULLUP
   btnTrigger.attach(PIN_DARTTRIGGER);
@@ -468,7 +471,7 @@ void setup() { // initilze
 
 void loop() { // Main Loop  
     
-    // Update all buttons
+
     
     btnRev.update();
     btnTrigger.update();
