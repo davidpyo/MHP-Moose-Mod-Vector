@@ -4,22 +4,24 @@
 #include <Bounce2.h>
 #include <Servo.h>
 
-#include <SPI.h>
+
 #include <Wire.h>
 
 // Include the PWM library, to change the PWM Frequency for pin controlling the flywheel, found here :
 // https://code.google.com/archive/p/arduino-pwm-frequency-library/downloads
 
 #include <PWM.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include "SSD1306Ascii.h"
+#include "SSD1306AsciiWire.h"
 
-#define PIN_FLYWHEEL_MOSFET         3    // (Orange) PIN to control DC Flywheel MOSFET 
+
+#define I2C_ADDRESS 0x3C
+#define PIN_FLYWHEEL_MOSFET         9    // (Orange) PIN to control DC Flywheel MOSFET 
 #define PIN_OLED_RESET              -1    //          for OLED
 #define PIN_REV                     5    // (White)  PIN listening to change in the Nerf Rev Button 
 #define PIN_DARTTRIGGER             6    // (Purple) PIN listening to trigger pull event
 
-#define PIN_SOLENOID                9    // (Purple) PIN to control solenoid
+#define PIN_SOLENOID                3    // (Purple) PIN to control solenoid
 
 #define PIN_BUTTON                  10   // (Grey)   Button for changing menus
 #define PIN_SELECTOR                11   // (Green)  Selector switch for Semi/(Burst/Full)
@@ -39,32 +41,26 @@
 #define AUTO_BURST                  2    //Selection of either burst/auto
 #define BURST_LIMIT                 3    //selection of how many darts per burst
 #define PWM                         4
-<<<<<<< HEAD
 #define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
 #define MINSOLENOIDDELAY            55                                       
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
-
-int     delaySolenoidExtended      = 40; //delay for solenoid to fully extend
-
-//#define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set
-#define MINSOLENOIDDELAY            45                                       
+#define MINSOLENOIDDELAY            60                                       
 #define REV_UP_DELAY                40   // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
-//Adafruit_SSD1306 display(PIN_OLED_RESET);
-#define SCREEN_WIDTH                128 // OLED display width, in pixels
-#define SCREEN_HEIGHT               64 // OLED display height, in pixels
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-#define OLED_RESET                 -1
+
+SSD1306AsciiWire oled;
+
+#define delaySolenoidExtended  60
+
 
 int     delayOffset                = 0;
-int     delaySolenoidExtended      = 60; //delay for solenoid to fully extend
-
 int     delaySolenoidRetracted     = MINSOLENOIDDELAY; //delay from when solenoid to fully retract to allow another extension
 int     burstLimit                 = 3;     // darts per burst
 int     modeFire                  = MODE_SINGLE; // track the mode of fire, Single, Burst or Auto, Single by default
 int     dartToBeFire              = 0;           // track amount of dart(s) to fire when trigger pulled, 0 by default
 
-int32_t frequency                 = 10000;       //frequency (in Hz) for PWM controlling Flywheel motors
+int32_t frequency                 = 1000;       //frequency (in Hz) for PWM controlling Flywheel motors
 int     fwSpeed                   = 255;         //flywheel speed from 0-255
 int     PWMSetting                = 100;         //in percentage
 boolean isRevving                 = false;       // track if blaster firing         
@@ -75,9 +71,12 @@ unsigned long timerSolenoidDetect = 0;
 boolean       isSolenoidExtended  = false;
 float   battVoltage;
 unsigned long timer               = 0;
+  //setup vars
+  
+  int     currentState              = 4;
+  int     nextState                 = 0;
+  String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","PWM Settings","Save and exit"};
 
-//declare display 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // Declare and Instantiate Bounce objects
 Bounce btnRev            = Bounce(); 
 Bounce btnTrigger        = Bounce(); 
@@ -89,7 +88,7 @@ Bounce switchButton      = Bounce();
 // Function: shotFiredHandle
 
 void shotFiringHandle() {
-  if(fireMode == MODE_SINGLE){
+  if(modeFire == MODE_SINGLE){
     delaySolenoidRetracted = MINSOLENOIDDELAY;
   } else {
     delaySolenoidRetracted = MINSOLENOIDDELAY + delayOffset;
@@ -123,7 +122,6 @@ void shotFiringHandle() {
 // Function: triggerPressedHandle
 
 void triggerPressedHandle(int caseModeFire) {  
-  //updateSettingDisplay();
     if (!isRevving) {
       pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
       delay(REV_UP_DELAY);
@@ -171,29 +169,28 @@ void readVoltage() {
 void updateDisplay() {
   
   readVoltage();
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(0,0);
-  display.println(battVoltage/10,1);
-  display.setTextSize(1);
+  oled.clear();
+  oled.set2X();
+  oled.setCursor(0,0);
+  oled.println(battVoltage/10,1);
+  oled.set1X();
   switch(modeFire){
     case(MODE_SINGLE):
-    display.println("SEMI");
+    oled.println("SEMI");
     break;
     case(MODE_BURST):
-    display.println("BURST");
+    oled.println("BURST");
     break;
     case(MODE_AUTO):
-    display.println("AUTO");
+    oled.println("AUTO");
     break;
   }
-  display.print("ROF: ");
-  display.println(delayOffset);
-  display.print("Burst Limit: ");
-  display.println(burstLimit);
-  display.print("PWM: ");
-  display.println(PWMSetting);
-  display.display();
+  oled.print("ROF: ");
+  oled.println(delayOffset);
+  oled.print("Burst Limit: ");
+  oled.println(burstLimit);
+  oled.print("PWM: ");
+  oled.println(PWMSetting);
 }
 
 
@@ -202,13 +199,11 @@ void updateDisplay() {
 // Function: main menu
 
 void menu(){
-   display.setTextSize(1);
-   display.setTextColor(WHITE);
+   oled.set1X();
    for (int i = 0; i <= 50; i += 10){
-    display.setCursor(0,i);
-    display.println(menus[i/10]);
+    oled.setCursor(0,i);
+    oled.println(menus[i/10]);
    }
-   display.display();
    unsigned long menuTime  = millis();
    boolean showCursor = true;
    int menuCursor = 10;
@@ -218,26 +213,34 @@ void menu(){
              menuTime = millis();
              if (showCursor){
               showCursor = false;
-              display.drawRect(0,menuCursor,128,10, WHITE);
-             } else {
-              showCursor = true;
-              display.clearDisplay();
+              //oled.setCursor(100,50);
+              //oled.print("<");
+              oled.clear();
               for (int i = 0; i <= 50; i += 10){
-              display.setCursor(0,i);
-              display.println(menus[i/10]);
+                oled.setCursor(0,i);
+                if (i == menuCursor){
+                 oled.print(menus[i/10]);
+                 oled.println("<<");
+                  } else{
+                    oled.setCursor(0,i);
+                        oled.println(menus[i/10]);
+                  }
               }
-
-              display.setCursor(0,menuCursor);
-              display.println(menus[menuCursor/10]);
+               } else {
+              showCursor = true;
+              oled.clear();
+              for (int i = 0; i <= 50; i += 10){
+              oled.setCursor(0,i);
+              oled.println(menus[i/10]);
+              }
              }
-             display.display();
           }
           
           btnTrigger.update(); //trigger acts as "confirm selection"
           switchButton.update(); //button acts as "change value"
           if (switchButton.fell()){
-              display.setCursor(0,menuCursor);
-              display.println(menus[menuCursor/10]);
+              //oled.setCursor(0,menuCursor);
+              //oled.println(menus[menuCursor/10]);
             if (menuCursor == 50){
               menuCursor = 10;
               menuTime -= 500;
@@ -257,44 +260,38 @@ void menu(){
 // Function: Change Values
 
 void changeValue(){
-   display.clearDisplay();
-   display.setTextSize(1);
-   display.setTextColor(WHITE);
-   display.setCursor(0,0);
-   display.println(menus[currentState]);
+   oled.clear();
+   oled.set1X();
+   oled.setCursor(0,0);
+   oled.println(menus[currentState]);
             switch(currentState){
             case (ROF):
 
 
-            display.setCursor(0,10);
-            display.println("Max value: 100");
-            display.println("Min Value: 0");
-            //display.setCursor(0,30);
-            display.print(delayOffset);
+            oled.setCursor(0,10);
+            oled.println("Max value: 100");
+            oled.println("Min Value: 0");
+            oled.print(delayOffset);
             break;
             case (AUTO_BURST):
-            display.setCursor(0,10);
-            display.println("Burst: True");
-            display.println("Auto: False");
-            //display.setCursor(0,30);
-            display.print(isBurst ? "True" : "False");
+            oled.setCursor(0,10);
+            oled.println("Burst: True");
+            oled.println("Auto: False");
+            oled.print(isBurst ? "True" : "False");
             break;
             case (BURST_LIMIT):
-            display.setCursor(0,10);
-            display.println("Max value: 10");
-            display.println("Min Value: 2");
-            //display.setCursor(0,30);
-            display.print(burstLimit);
-            display.display();
+            oled.setCursor(0,10);
+            oled.println("Max value: 10");
+            oled.println("Min Value: 2");
+            oled.print(burstLimit);
             break;
             case (PWM):
-            display.setCursor(0,10);
-            display.println("Max value: 100");
-            display.println("Min Value: 50");
-            display.println(PWMSetting);
+            oled.setCursor(0,10);
+            oled.println("Max value: 100");
+            oled.println("Min Value: 50");
+            oled.println(PWMSetting);
             break;
             }
-   display.display();
    
    while(1){
           btnTrigger.update(); //trigger acts as "confirm selection"
@@ -302,64 +299,54 @@ void changeValue(){
           if (switchButton.fell()){
             switch(currentState){
             case (ROF):
-            display.clearDisplay();
-            display.setCursor(0,0);
-            display.println(menus[currentState]);
-            //display.setCursor(0,10);
-            display.println("Max value: 100");
-            display.println("Min Value: 0");
-            //display.setCursor(0,30);
+            oled.clear();
+            oled.setCursor(0,0);
+            oled.println(menus[currentState]);
+            //oled.setCursor(0,10);
+            oled.println("Max value: 100");
+            oled.println("Min Value: 0");
             delayOffset += 10;
             if (delayOffset > 100){
               delayOffset = 0;
             }
-            display.print(delayOffset);
-            display.display();
+            oled.print(delayOffset);
             break;
             case (AUTO_BURST):
-            display.clearDisplay();
-            display.setCursor(0,0);
-            display.println(menus[currentState]);
-            //display.setCursor(0,10);
-            display.println("Burst: True");
-            display.println("Auto: False");
-           // display.setCursor(0,30);
-            display.print(isBurst ? "True" : "False");
+            oled.clear();
+            oled.setCursor(0,0);
+            oled.println(menus[currentState]);
+            oled.println("Burst: True");
+            oled.println("Auto: False");
+            oled.print(isBurst ? "True" : "False");
             if (isBurst){
               isBurst = false;
             } else {
               isBurst = true;
             }
-            display.display();
             break;
             case (BURST_LIMIT):
-            display.clearDisplay();
-            display.setCursor(0,0);
-            display.println(menus[currentState]);
-           // display.setCursor(0,10);
-            display.println("Max value: 10");
-            display.println("Min Value: 2");
-            //display.setCursor(0,30);
+            oled.clear();
+            oled.setCursor(0,0);
+            oled.println(menus[currentState]);
+            oled.println("Max value: 10");
+            oled.println("Min Value: 2");
             burstLimit++;
             if (burstLimit > 10){
               burstLimit = 2;
             }
-            display.print(burstLimit);
-            display.display();
+            oled.print(burstLimit);
             break;
             case (PWM):
-            display.clearDisplay();
-            display.setCursor(0,0);
-            display.println(menus[currentState]);
-            //display.setCursor(0,10);
-            display.println("Max value: 100");
-            display.println("Min Value: 50");
+            oled.clear();
+            oled.setCursor(0,0);
+            oled.println(menus[currentState]);
+            oled.println("Max value: 100");
+            oled.println("Min Value: 50");
             PWMSetting++;
             if (PWMSetting >100){
               PWMSetting = 50;
             }
-            display.println(PWMSetting);
-            display.display();
+            oled.println(PWMSetting);
             break;
             }
           }
@@ -376,15 +363,20 @@ void changeValue(){
 
 
 void setup() { // initilze  
-  //setup vars
+//sets up the setup loop if trigger is pulled
   boolean setupBlaster = true;
-  int     currentState              = 4;
-  int     nextState                 = 0;
-  String menus [] = {"MAIN MENU:", "Rate of fire","AUTO/BURST","Burst Settings","PWM Settings","Save and exit"};
+  Wire.begin();
+  Wire.setClock(400000L);
+
+
+  oled.begin(&Adafruit128x64, I2C_ADDRESS);
+  oled.setFont(Adafruit5x7);
+  oled.displayRemap(true);
+
   
   //initialize all timers except for 0, to save time keeping functions
   InitTimersSafe();
-  //sets up the setup loop if trigger is pulled
+
 
   //sets the frequency for the specified pin
   bool success = SetPinFrequencySafe(PIN_FLYWHEEL_MOSFET, frequency);
@@ -436,8 +428,8 @@ void setup() { // initilze
   
   fwSpeed =  map(PWMSetting , 0, 100, 0, 255);
   
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
-  display.clearDisplay();
+   
+  oled.clear();
 
   if (digitalRead(PIN_DARTTRIGGER) == LOW){
     while(setupBlaster){
@@ -483,12 +475,10 @@ void loop() { // Main Loop
 
     if (btnRev.fell()) {                   // press    
         isRevving = true;
-        // digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH); // start flywheels
         pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
     } else if (btnRev.rose()) {        // released
       isRevving = false;
       if (!isFiring) {        
-        // digitalWrite(PIN_FLYWHEEL_MOSFET, LOW); // stop flywheels
        pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
       }
     }
