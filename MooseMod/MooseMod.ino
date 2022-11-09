@@ -107,7 +107,8 @@ void shotFiringHandle() {
         isFiring = false;
         if (!isRevving) { // Rev button not pressed
           isRevving = false;
-          pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
+          digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
+          //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
         }
       } else if ((millis() - timerSolenoidDetect) >= delaySolenoidRetracted) {
         digitalWrite(PIN_SOLENOID, HIGH); // Extend Solenoid
@@ -123,7 +124,8 @@ void shotFiringHandle() {
 
 void triggerPressedHandle(int caseModeFire) {  
     if (!isRevving) {
-      pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
+    //  pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
+      digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH);
       delay(REV_UP_DELAY);
       isRevving = true;
     }
@@ -159,8 +161,8 @@ void triggerReleasedHandle() {
 
 void readVoltage() {
   // you might have to adjust the formula according to the voltage sensor you use
-  battVoltage = (analogRead(PIN_VOLTREAD) * 0.245); //converts digital to a voltage
-  //0.0245 comes from fixed point calculation of (5/1024) * 5 * 10
+  battVoltage = (analogRead(PIN_VOLTREAD) * 0.259); //converts digital to a voltage
+
 }
 
 
@@ -414,7 +416,8 @@ void setup() { // initilze
   // OUTPUT PINs setup
 
   pinMode (PIN_FLYWHEEL_MOSFET, OUTPUT);
-  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
+  //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);  
+  digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
   pinMode(PIN_SOLENOID, OUTPUT);
   digitalWrite(PIN_SOLENOID, LOW);
   
@@ -475,11 +478,13 @@ void loop() { // Main Loop
 
     if (btnRev.fell()) {                   // press    
         isRevving = true;
-        pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);        
+       // pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);  
+        digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH);      
     } else if (btnRev.rose()) {        // released
       isRevving = false;
       if (!isFiring) {        
-       pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+       //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+       digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
       }
     }
   
