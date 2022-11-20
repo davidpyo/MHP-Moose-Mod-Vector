@@ -104,8 +104,8 @@ void shotFiringHandle() {
         isFiring = false;
         if (!isRevving) { // Rev button not pressed
           isRevving = false;
-          digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
-          //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
+          //digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
+          pwmWrite(PIN_FLYWHEEL_MOSFET, 0);// stop flywheels
         }
       } else if ((millis() - timerSolenoidDetect) >= delaySolenoidRetracted) {
         digitalWrite(PIN_SOLENOID, HIGH); // Extend Solenoid
@@ -121,8 +121,8 @@ void shotFiringHandle() {
 
 void triggerPressedHandle(int caseModeFire) {
   if (!isRevving) {
-    //  pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
-    digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH);
+      pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed); // start flywheels
+    //digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH);
     delay(REV_UP_DELAY);
     isRevving = true;
   }
@@ -398,8 +398,8 @@ void setup() { // initilze
   // OUTPUT PINs setup
 
   pinMode (PIN_FLYWHEEL_MOSFET, OUTPUT);
-  //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
-  digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
+  pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+  //digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
   pinMode(PIN_SOLENOID, OUTPUT);
   digitalWrite(PIN_SOLENOID, LOW);
 
@@ -434,13 +434,13 @@ void loop() { // Main Loop
 
   if (btnRev.fell()) {                   // press
     isRevving = true;
-    // pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);
-    digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH);
+     pwmWrite(PIN_FLYWHEEL_MOSFET, fwSpeed);
+    //digitalWrite(PIN_FLYWHEEL_MOSFET, HIGH);
   } else if (btnRev.rose()) {        // released
     isRevving = false;
     if (!isFiring) {
-      //pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
-      digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
+      pwmWrite(PIN_FLYWHEEL_MOSFET, 0);
+      //digitalWrite(PIN_FLYWHEEL_MOSFET, LOW);
     }
   }
 
@@ -461,7 +461,6 @@ void loop() { // Main Loop
   // Listen to Firing Mode change: Single Shot, Burst, Full Auto
 
   if (switchSelector.changed()) {
-    timer -= 6000; //update display
     if (switchSelector.read()) { //if selector is in full/burst position
       if (isBurst) {
         modeFire = MODE_BURST;
@@ -471,16 +470,19 @@ void loop() { // Main Loop
     } else { // single
       modeFire = MODE_SINGLE;
     }
+    updateDisplay();
+    timer = millis();
   }
 
 
   if (switchButton.fell()) {
-    timer = millis();
+    timer = millis(); 
     setupBlaster = true;
   }
 
   if (switchButton.rose()) {
     setupBlaster = false;
+    
   }
 
   if (setupBlaster && ((millis() - timer) > 3000)) { //only enters setup if switchbutton held for 3s
@@ -493,6 +495,8 @@ void loop() { // Main Loop
           }
           break;
         case (5):
+         currentState = 4;
+         nextState = 0;
           setupBlaster = false; //exit case
           break;
         default:
