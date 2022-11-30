@@ -41,8 +41,8 @@
 
 #define MAXSOLENOIDDELAY            100  //controls how slow of a ROF you can set 
 #define REV_UP_DELAY                180  // Increase/decrease this to control the flywheel rev-up time (in milliseconds) 
-#define MINSOLENOIDDELAY            60   //see delaySolenoidRetracted
-#define DELAYSOLENOIDEXTENDED       60   //time for solenoid to fully extend
+#define MINSOLENOIDDELAY            45   //see delaySolenoidRetracted 50
+#define DELAYSOLENOIDEXTENDED       30   //time for solenoid to fully extend 40
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define I2C_ADDRESS 0x3C
 SSD1306AsciiWire oled;
