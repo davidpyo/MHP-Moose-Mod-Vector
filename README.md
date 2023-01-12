@@ -1,5 +1,3 @@
-# MHP-Moose-Mod-Vector
-Program, Diagram for a select fire PWM solenoid half-dart vector 
+# Brushless T19Gryphon Blaster
 
-This is a repo for the MHP Moose Mod vector up on thingiverse: https://www.thingiverse.com/thing:5226421. It changes the design to a selectfire PWM solenoid fired design. Settings can be changed by holding the 
-trigger down on boot and setting options.
+This code is essentially the same as the MooseModVector, but is designed for a brushless blaster which has some differences in wiring and motor control
